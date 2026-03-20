@@ -4,22 +4,13 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
+  EmbedBuilder
 } = require("discord.js");
 
 const axios = require("axios");
 const config = require("./token.js");
 
-const token = config.DISCORD_TOKEN?.trim();
-
-if (!token) {
-  console.error("❌ Token is missing!");
-  process.exit(1);
-}
-
+const token = config.DISCORD_TOKEN;
 const CLIENT_ID = "1441541093156982975";
 const GUILD_ID = "1385650154832662688";
 
@@ -53,12 +44,38 @@ const monkeyImages = [
 ];
 
 // --------------------
-// BLACKLIST (no "shit")
+// GOOFY IMAGES (Pinterest)
 // --------------------
-const blacklist = [
-  "nigger", "faggot", "bitch", "cunt", "asshole", "slut", "fuck"
+const goofyMediaURLs = [
+  "https://i.pinimg.com/originals/95/b6/e4/95b6e46cdf26dfb2e8b898f21d98f912.gif",
+  "https://i.pinimg.com/736x/3f/40/e4/3f40e450e87936b1a2830ee1c96ae70a.jpg",
+  "https://i.pinimg.com/736x/9f/5d/05/9f5d053772f615da602544e096892f86.jpg",
+  "https://i.pinimg.com/736x/19/5a/ed/195aed7b818f826da768722628da005b.jpg",
+  "https://i.pinimg.com/1200x/ee/79/83/ee7983129251d2e9cdda5b0a259544aa.jpg",
+  "https://i.pinimg.com/736x/d4/f9/d1/d4f9d1bc45feb0b2bd4b6e9c249d1ed8.jpg",
+  "https://i.pinimg.com/736x/63/1f/d1/631fd184d4d2aa69affdd6dc47067a73.jpg",
+  "https://i.pinimg.com/736x/e0/39/1e/e0391e07fd1b5ff4d5130aaf7009e2c8.jpg",
+  "https://i.pinimg.com/736x/fa/f3/d3/faf3d37b8ea5b967aa5ed8e93e383851.jpg",
+  "https://i.pinimg.com/1200x/d4/ab/3b/d4ab3b442eda560e704129401feaef66.jpg",
+  "https://i.pinimg.com/1200x/f4/0e/01/f40e016b81298d5687f69adf6908472c.jpg",
+  "https://i.pinimg.com/1200x/44/e4/3d/44e43dacea15abb8dd8b69c43f703acd.jpg",
+  "https://i.pinimg.com/1200x/dd/39/cc/dd39cc6cb741f5582bf7607b3bffd478.jpg",
+  "https://i.pinimg.com/736x/f8/ae/8b/f8ae8b34d6c4a9a30c00f5785f9acc13.jpg",
+  "https://i.pinimg.com/736x/9a/7c/a0/9a7ca0230a923098342ceb9fb5d676e4.jpg",
+  "https://i.pinimg.com/736x/aa/2b/ca/aa2bcae3df8f60e19c705c9825ec5c9b.jpg",
+  "https://i.pinimg.com/1200x/5b/94/d8/5b94d832cbdc76a12b4312d3bbf95244.jpg",
+  "https://i.pinimg.com/736x/8c/b8/03/8cb80361faa7807061393e3bf562e4a6.jpg",
+  "https://i.pinimg.com/736x/3f/0f/06/3f0f065498b5b4fb5b4f1707cfe2602a.jpg",
+  "https://i.pinimg.com/736x/9f/11/2a/9f112a0f229629918a8536e9e389d753.jpg",
+  "https://i.pinimg.com/736x/f5/0e/87/f50e87a83960068ed1cfd16d6754e7dd.jpg",
+  "https://i.pinimg.com/736x/75/71/7b/75717b7917006e18b4f876c7c0a543c0.jpg"
 ];
+let goofyCache = goofyMediaURLs.map(url => ({ title: "🖼 Goofy Media", url }));
 
+// --------------------
+// BLACKLIST (allow "ass")
+// --------------------
+const blacklist = ["nigger","faggot","bitch","cunt","slut","fuck"];
 function containsBlacklisted(text) {
   if (!text) return false;
   text = text.toLowerCase();
@@ -84,10 +101,7 @@ async function fetchSub(sub) {
 
 async function buildCache(subs) {
   let posts = [];
-  for (const sub of subs) {
-    posts.push(...(await fetchSub(sub)));
-  }
-
+  for (const sub of subs) posts.push(...(await fetchSub(sub)));
   return posts.filter(p => !p.over_18 && !containsBlacklisted(p.title));
 }
 
@@ -101,43 +115,17 @@ async function refreshCaches() {
 }
 
 refreshCaches();
-setInterval(refreshCaches, 10 * 60 * 1000);
-
-// --------------------
-// BUTTONS
-// --------------------
-function buttons(type) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`next_${type}`)
-      .setLabel("Next 🔄")
-      .setStyle(ButtonStyle.Primary)
-  );
-}
+setInterval(refreshCaches, 10*60*1000);
 
 // --------------------
 // BUILD POST
 // --------------------
 function buildPost(post) {
   if (!post) return { content: "No content available" };
-
-  if (post.is_video && post.media?.reddit_video?.fallback_url) {
-    return { content: `**${post.title}**\n${post.media.reddit_video.fallback_url}` };
+  if (post.url && /\.(jpg|jpeg|png|gif)$/i.test(post.url)) {
+    return { embeds: [new EmbedBuilder().setTitle(post.title || "🐵 monke").setImage(post.url).setColor(0x00bfff)] };
   }
-
-  if (post.url && (post.url.endsWith(".jpg") || post.url.endsWith(".png") || post.url.endsWith(".gif"))) {
-    return {
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(post.title || "🐵 monke")
-          .setURL(post.permalink ? `https://reddit.com${post.permalink}` : null)
-          .setImage(post.url)
-          .setColor(0x00bfff)
-      ]
-    };
-  }
-
-  return { content: `**${post.title}**\nhttps://reddit.com${post.permalink}` };
+  return { content: `**${post.title}**\n${post.url}` };
 }
 
 // --------------------
@@ -147,21 +135,19 @@ const commands = [
   new SlashCommandBuilder().setName("meme").setDescription("Trending memes"),
   new SlashCommandBuilder().setName("hockeymemes").setDescription("Trending hockey memes"),
   new SlashCommandBuilder().setName("hockeygoalies").setDescription("Trending goalie memes"),
-  new SlashCommandBuilder().setName("monke").setDescription("Random monke 🐵")
+  new SlashCommandBuilder().setName("monke").setDescription("Random monke 🐵"),
+  new SlashCommandBuilder().setName("goofyimages").setDescription("Random funny Pinterest images, GIFs, or videos")
 ].map(c => c.toJSON());
 
+// --------------------
+// REGISTER COMMANDS
+// --------------------
 const rest = new REST({ version: "10" }).setToken(token);
-
 (async () => {
   try {
-    await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-      { body: commands }
-    );
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
     console.log("✅ Commands registered");
-  } catch (err) {
-    console.error(err);
-  }
+  } catch(err){ console.error(err); }
 })();
 
 // --------------------
@@ -174,72 +160,26 @@ const rand = arr => arr[Math.floor(Math.random() * arr.length)];
 // --------------------
 client.on("interactionCreate", async interaction => {
   try {
-    if (interaction.isChatInputCommand()) {
-      let cache, type;
+    if (!interaction.isChatInputCommand()) return;
 
-      if (interaction.commandName === "meme") { cache = memeCache; type = "meme"; }
-      if (interaction.commandName === "hockeymemes") { cache = hockeyCache; type = "hockey"; }
-      if (interaction.commandName === "hockeygoalies") { cache = goalieCache; type = "goalie"; }
-
-      if (interaction.commandName === "monke") {
-        const combined = [
-          ...monkeyCache,
-          ...monkeyImages.map(url => ({ title: "🐵 monke", url }))
-        ];
-
-        const post = rand(combined);
-
-        return await interaction.reply({
-          ...buildPost(post),
-          components: [buttons("monke")]
-        });
-      }
-
-      const post = rand(cache);
-      await interaction.reply({
-        ...buildPost(post),
-        components: [buttons(type)]
-      });
+    let cache, post;
+    switch(interaction.commandName) {
+      case "meme": cache = memeCache; post = rand(cache); break;
+      case "hockeymemes": cache = hockeyCache; post = rand(cache); break;
+      case "hockeygoalies": cache = goalieCache; post = rand(cache); break;
+      case "monke": cache = [...monkeyCache, ...monkeyImages.map(url => ({ title:"🐵 monke", url }))]; post = rand(cache); break;
+      case "goofyimages": cache = goofyCache; post = rand(cache); break;
+      default: return;
     }
 
-    if (interaction.isButton()) {
-      let cache;
-
-      if (interaction.customId === "next_meme") cache = memeCache;
-      if (interaction.customId === "next_hockey") cache = hockeyCache;
-      if (interaction.customId === "next_goalie") cache = goalieCache;
-
-      if (interaction.customId === "next_monke") {
-        const combined = [
-          ...monkeyCache,
-          ...monkeyImages.map(url => ({ title: "🐵 monke", url }))
-        ];
-
-        const post = rand(combined);
-
-        return await interaction.update({
-          ...buildPost(post),
-          components: [interaction.message.components[0]]
-        });
-      }
-
-      const post = rand(cache);
-      await interaction.update({
-        ...buildPost(post),
-        components: [interaction.message.components[0]]
-      });
-    }
-
-  } catch (err) {
+    await interaction.reply(buildPost(post));
+  } catch(err){
     console.error("Interaction error:", err);
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({ content: "❌ Something went wrong" });
-    } else {
-      await interaction.reply({ content: "❌ Something went wrong", ephemeral: true });
-    }
+    if (interaction.deferred || interaction.replied) await interaction.editReply({ content:"❌ Something went wrong" });
+    else await interaction.reply({ content:"❌ Something went wrong", ephemeral:true });
   }
 });
 
 // --------------------
-client.once("ready", () => console.log(`Logged in as ${client.user.tag}`));
+client.once("ready",()=>console.log(`Logged in as ${client.user.tag}`));
 client.login(token);
