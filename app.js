@@ -4,7 +4,10 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } = require("discord.js");
 
 const axios = require("axios");
@@ -32,48 +35,33 @@ const monkeySubs = ["FreeTheMonkeys","punchthemonkey","ape","MonkeyMemes"];
 const monkeyImages = [
   "https://i.pinimg.com/736x/f0/cb/00/f0cb0024df9a8fa950aac66295b10cb0.jpg",
   "https://i.pinimg.com/1200x/4d/70/f4/4d70f4962981b8b6f06f1874da87209a.jpg",
-  "https://i.pinimg.com/1200x/f8/e1/5b/f8e15bcd1a3aba568c14a1afd24810c0.jpg",
-  "https://i.pinimg.com/736x/c0/d1/b5/c0d1b5920d474e1a702ca680039bb07e.jpg",
-  "https://i.pinimg.com/736x/1a/6f/f2/1a6ff2c75346f6670872231ac8c8c728.jpg",
-  "https://i.pinimg.com/736x/e0/e7/0c/e0e70c256102543baaee423fec59e015.jpg",
-  "https://i.pinimg.com/736x/0a/7f/ff/0a7fff9fb5356a3db684a548b8a06b7c.jpg",
-  "https://i.pinimg.com/736x/f5/f0/76/f5f07626ce263bd7370d42bac63205c3.jpg",
-  "https://i.pinimg.com/1200x/a8/4b/6e/a84b6e5c8dd9558f593707c858a5578a.jpg",
-  "https://i.pinimg.com/736x/20/5d/1f/205d1f3f05ab85624798a9f4d4c5c6bb.jpg",
-  "https://i.pinimg.com/736x/b0/95/30/b09530578f8396b925e2b6a1cedc90da.jpg"
+  "https://i.pinimg.com/1200x/f8/e1/5b/f8e15bcd1a3aba568c14a1afd24810c0.jpg"
 ];
 
 // --------------------
-// GOOFY IMAGES (Pinterest)
+// GOOFY IMAGES
 // --------------------
 const goofyMediaURLs = [
-  "https://i.pinimg.com/originals/95/b6/e4/95b6e46cdf26dfb2e8b898f21d98f912.gif",
+  "https://media1.tenor.com/m/EwY2ORle_XAAAAAd/wizard-dance.gif",
   "https://i.pinimg.com/736x/3f/40/e4/3f40e450e87936b1a2830ee1c96ae70a.jpg",
   "https://i.pinimg.com/736x/9f/5d/05/9f5d053772f615da602544e096892f86.jpg",
-  "https://i.pinimg.com/736x/19/5a/ed/195aed7b818f826da768722628da005b.jpg",
-  "https://i.pinimg.com/1200x/ee/79/83/ee7983129251d2e9cdda5b0a259544aa.jpg",
-  "https://i.pinimg.com/736x/d4/f9/d1/d4f9d1bc45feb0b2bd4b6e9c249d1ed8.jpg",
-  "https://i.pinimg.com/736x/63/1f/d1/631fd184d4d2aa69affdd6dc47067a73.jpg",
-  "https://i.pinimg.com/736x/e0/39/1e/e0391e07fd1b5ff4d5130aaf7009e2c8.jpg",
-  "https://i.pinimg.com/736x/fa/f3/d3/faf3d37b8ea5b967aa5ed8e93e383851.jpg",
-  "https://i.pinimg.com/1200x/d4/ab/3b/d4ab3b442eda560e704129401feaef66.jpg",
-  "https://i.pinimg.com/1200x/f4/0e/01/f40e016b81298d5687f69adf6908472c.jpg",
-  "https://i.pinimg.com/1200x/44/e4/3d/44e43dacea15abb8dd8b69c43f703acd.jpg",
-  "https://i.pinimg.com/1200x/dd/39/cc/dd39cc6cb741f5582bf7607b3bffd478.jpg",
-  "https://i.pinimg.com/736x/f8/ae/8b/f8ae8b34d6c4a9a30c00f5785f9acc13.jpg",
-  "https://i.pinimg.com/736x/9a/7c/a0/9a7ca0230a923098342ceb9fb5d676e4.jpg",
-  "https://i.pinimg.com/736x/aa/2b/ca/aa2bcae3df8f60e19c705c9825ec5c9b.jpg",
-  "https://i.pinimg.com/1200x/5b/94/d8/5b94d832cbdc76a12b4312d3bbf95244.jpg",
-  "https://i.pinimg.com/736x/8c/b8/03/8cb80361faa7807061393e3bf562e4a6.jpg",
-  "https://i.pinimg.com/736x/3f/0f/06/3f0f065498b5b4fb5b4f1707cfe2602a.jpg",
-  "https://i.pinimg.com/736x/9f/11/2a/9f112a0f229629918a8536e9e389d753.jpg",
-  "https://i.pinimg.com/736x/f5/0e/87/f50e87a83960068ed1cfd16d6754e7dd.jpg",
-  "https://i.pinimg.com/736x/75/71/7b/75717b7917006e18b4f876c7c0a543c0.jpg"
+  "https://i.pinimg.com/736x/19/5a/ed/195aed7b818f826da768722628da005b.jpg"
 ];
 let goofyCache = goofyMediaURLs.map(url => ({ title: "🖼 Goofy Media", url }));
 
 // --------------------
-// BLACKLIST (allow "ass")
+// MEMIFY IMAGES
+// --------------------
+const memifyImages = [
+  "https://i.pinimg.com/736x/71/54/0d/71540d33c1dc92647f434879a1c7db52.jpg",
+  "https://i.pinimg.com/736x/c4/f0/8f/c4f08fe25118e1b4f6fb53543e39f4db.jpg",
+  "https://i.pinimg.com/736x/62/44/fc/6244fc96dca19d75c77f62e764949323.jpg",
+  "https://i.pinimg.com/736x/b4/95/b5/b495b528bb5f4778039e1c23e762e9e7.jpg",
+  "https://i.pinimg.com/736x/56/d6/e4/56d6e47b6278b32ecfb9278b9fc79b7d.jpg"
+];
+
+// --------------------
+// BLACKLIST
 // --------------------
 const blacklist = ["nigger","faggot","bitch","cunt","slut","fuck"];
 function containsBlacklisted(text) {
@@ -106,26 +94,79 @@ async function buildCache(subs) {
 }
 
 async function refreshCaches() {
-  console.log("Refreshing caches...");
   memeCache = await buildCache(memeSubs);
   hockeyCache = await buildCache(hockeySubs);
   goalieCache = await buildCache(goalieSubs);
   monkeyCache = await buildCache(monkeySubs);
-  console.log("Caches ready");
 }
-
 refreshCaches();
 setInterval(refreshCaches, 10*60*1000);
+
+// --------------------
+// HANGMAN
+// --------------------
+const hangmanWords = [
+  "discord","hockey","banana","javascript","monkey",
+  "internet","goalie","galaxy","rocket","pancake"
+].filter(w => !w.includes("z"));
+
+const hangmanGames = new Map();
+
+const hangmanStages = [
+  "```\n\n\n\n\n=========\n```",
+  "```\n |\n |\n |\n |\n=========\n```",
+  "```\n +---+\n |\n |\n |\n |\n=========\n```",
+  "```\n +---+\n |   O\n |\n |\n |\n=========\n```",
+  "```\n +---+\n |   O\n |   |\n |\n |\n=========\n```",
+  "```\n +---+\n |   O\n |  /|\\\n |\n |\n=========\n```",
+  "```\n +---+\n |   O\n |  /|\\\n |  / \\\n |\n=========\n```"
+];
+
+const WIN_GIF = "https://media1.tenor.com/m/EwY2ORle_XAAAAAd/wizard-dance.gif";
+const LOSE_GIF = "https://media1.tenor.com/m/-vrZWF9Ly18AAAAd/wet-eggplant.gif";
+
+function getDisplayWord(word, guessed) {
+  return word.split("").map(l => (guessed.includes(l) ? l : "_")).join(" ");
+}
+
+function createKeyboard(disabled = []) {
+  const rows = [];
+  const letters = "abcdefghijklmnopqrstuvwxy".split("");
+
+  for (let i = 0; i < 5; i++) {
+    const row = new ActionRowBuilder();
+    letters.slice(i*5, i*5+5).forEach(l => {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`hang_${l}`)
+          .setLabel(l.toUpperCase())
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(disabled.includes(l))
+      );
+    });
+    rows.push(row);
+  }
+  return rows;
+}
 
 // --------------------
 // BUILD POST
 // --------------------
 function buildPost(post) {
   if (!post) return { content: "No content available" };
+
   if (post.url && /\.(jpg|jpeg|png|gif)$/i.test(post.url)) {
-    return { embeds: [new EmbedBuilder().setTitle(post.title || "🐵 monke").setImage(post.url).setColor(0x00bfff)] };
+    return {
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(post.title || "Image")
+          .setImage(post.url)
+          .setColor(0x00bfff)
+      ]
+    };
   }
-  return { content: `**${post.title}**\n${post.url}` };
+
+  return { content: `${post.title || "Post"}\n${post.url || ""}` };
 }
 
 // --------------------
@@ -133,53 +174,133 @@ function buildPost(post) {
 // --------------------
 const commands = [
   new SlashCommandBuilder().setName("meme").setDescription("Trending memes"),
-  new SlashCommandBuilder().setName("hockeymemes").setDescription("Trending hockey memes"),
-  new SlashCommandBuilder().setName("hockeygoalies").setDescription("Trending goalie memes"),
-  new SlashCommandBuilder().setName("monke").setDescription("Random monke 🐵"),
-  new SlashCommandBuilder().setName("goofyimages").setDescription("Random funny Pinterest images, GIFs, or videos")
-].map(c => c.toJSON());
+  new SlashCommandBuilder().setName("hockeymemes").setDescription("Hockey memes"),
+  new SlashCommandBuilder().setName("hockeygoalies").setDescription("Goalie memes"),
+  new SlashCommandBuilder().setName("monke").setDescription("Random monke"),
+  new SlashCommandBuilder().setName("goofyimages").setDescription("Goofy media"),
+  new SlashCommandBuilder()
+    .setName("memify")
+    .setDescription("Make a meme")
+    .addStringOption(o=>o.setName("text").setRequired(true).setDescription("Text")),
+  new SlashCommandBuilder().setName("space").setDescription("Space image"),
+  new SlashCommandBuilder().setName("hangman").setDescription("Play hangman")
+].map(c=>c.toJSON());
 
-// --------------------
-// REGISTER COMMANDS
-// --------------------
-const rest = new REST({ version: "10" }).setToken(token);
-(async () => {
-  try {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log("✅ Commands registered");
-  } catch(err){ console.error(err); }
+const rest = new REST({version:"10"}).setToken(token);
+(async()=>{
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID,GUILD_ID),{body:commands});
 })();
 
 // --------------------
-// RANDOM HELPER
+// RANDOM
 // --------------------
-const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+const rand = arr => arr[Math.floor(Math.random()*arr.length)];
 
 // --------------------
 // INTERACTIONS
 // --------------------
-client.on("interactionCreate", async interaction => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
+client.on("interactionCreate", async interaction=>{
+  try{
+    if(interaction.isChatInputCommand()){
 
-    let cache, post;
-    switch(interaction.commandName) {
-      case "meme": cache = memeCache; post = rand(cache); break;
-      case "hockeymemes": cache = hockeyCache; post = rand(cache); break;
-      case "hockeygoalies": cache = goalieCache; post = rand(cache); break;
-      case "monke": cache = [...monkeyCache, ...monkeyImages.map(url => ({ title:"🐵 monke", url }))]; post = rand(cache); break;
-      case "goofyimages": cache = goofyCache; post = rand(cache); break;
-      default: return;
+      if(interaction.commandName==="memify"){
+        const text = interaction.options.getString("text") || "No text";
+        const image = rand(memifyImages);
+
+        return interaction.reply({
+          embeds:[
+            new EmbedBuilder()
+              .setTitle("😂 Meme")
+              .setDescription(text.toUpperCase())
+              .setImage(image)
+              .setColor(0xff9900)
+          ]
+        });
+      }
+
+      if(interaction.commandName==="space"){
+        const posts = await fetchSub("spaceporn");
+        return interaction.reply(buildPost(rand(posts)));
+      }
+
+      if(interaction.commandName==="hangman"){
+        const word = rand(hangmanWords);
+        hangmanGames.set(interaction.user.id,{word,guessed:[],tries:6});
+
+        return interaction.reply({
+          embeds:[new EmbedBuilder()
+            .setTitle("🎮 Hangman")
+            .setDescription(`Word: ${getDisplayWord(word,[])}\n\nTries: 6`)
+          ],
+          components:createKeyboard()
+        });
+      }
+
+      let cache = [];
+      if(interaction.commandName==="meme") cache=memeCache;
+      if(interaction.commandName==="hockeymemes") cache=hockeyCache;
+      if(interaction.commandName==="hockeygoalies") cache=goalieCache;
+      if(interaction.commandName==="monke") cache=[...monkeyCache,...monkeyImages.map(u=>({url:u}))];
+      if(interaction.commandName==="goofyimages") cache=goofyCache;
+
+      return interaction.reply(buildPost(rand(cache)));
     }
 
-    await interaction.reply(buildPost(post));
-  } catch(err){
-    console.error("Interaction error:", err);
-    if (interaction.deferred || interaction.replied) await interaction.editReply({ content:"❌ Something went wrong" });
-    else await interaction.reply({ content:"❌ Something went wrong", ephemeral:true });
+    if(interaction.isButton() && interaction.customId.startsWith("hang_")){
+      const letter = interaction.customId.split("_")[1];
+      const game = hangmanGames.get(interaction.user.id);
+      if(!game) return;
+
+      if(!game.guessed.includes(letter)){
+        game.guessed.push(letter);
+        if(!game.word.includes(letter)) game.tries--;
+      }
+
+      const display = getDisplayWord(game.word,game.guessed);
+      const stage = hangmanStages[6-game.tries];
+
+      if(!display.includes("_")){
+        hangmanGames.delete(interaction.user.id);
+        return interaction.update({
+          content: WIN_GIF,
+          embeds:[new EmbedBuilder()
+            .setTitle("🎉 YOU WON!")
+            .setDescription(`Word: **${game.word}**\n\n${stage}`)
+          ],
+          components:[]
+        });
+      }
+
+      if(game.tries<=0){
+        hangmanGames.delete(interaction.user.id);
+        return interaction.update({
+          content: LOSE_GIF,
+          embeds:[new EmbedBuilder()
+            .setTitle("💀 YOU LOST!")
+            .setDescription(`Word: **${game.word}**\n\n${hangmanStages[6]}`)
+          ],
+          components:[]
+        });
+      }
+
+      return interaction.update({
+        embeds:[new EmbedBuilder()
+          .setTitle("🎮 Hangman")
+          .setDescription(`Word: ${display}\n\nTries: ${game.tries}\n\n${stage}`)
+        ],
+        components:createKeyboard(game.guessed)
+      });
+    }
+
+  }catch(err){
+    console.error(err);
+    if(interaction.replied || interaction.deferred){
+      interaction.editReply({content:"❌ Error"});
+    } else {
+      interaction.reply({content:"❌ Error",ephemeral:true});
+    }
   }
 });
 
-// --------------------
 client.once("ready",()=>console.log(`Logged in as ${client.user.tag}`));
 client.login(token);
