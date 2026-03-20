@@ -4,18 +4,16 @@ const {
   REST, 
   Routes, 
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } = require("discord.js");
-
 const axios = require("axios");
 const token = require("./token.js");
 
-// Replace with your own IDs
 const CLIENT_ID = "1441541093156982975";
 const GUILD_ID = "1385650154832662688";
-
-// Replace with your Wispbyte URL
-const WISPB_URL = "https://your-wispbyte-url.com";
 
 const client = new Client({
   intents: [
@@ -28,176 +26,172 @@ const client = new Client({
 // --------------------
 // PREFIX COMMAND (!ping)
 // --------------------
-const prefix = "!";
-
 client.on("messageCreate", msg => {
   if (msg.author.bot) return;
-  if (!msg.content.startsWith(prefix)) return;
-
-  const command = msg.content.slice(prefix.length).trim().toLowerCase();
-
-  if (command === "ping") {
-    msg.reply("🏓 Pong!!!");
-  }
+  if (msg.content === "!ping") msg.reply("🏓 Pong!!!");
 });
 
 // --------------------
 // SLASH COMMANDS
 // --------------------
 const commands = [
-  new SlashCommandBuilder()
-    .setName("meme")
-    .setDescription("Sends a random meme 😂")
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("monke")
-    .setDescription("Sends a random monkey 🐒")
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("8ball")
-    .setDescription("Ask the magic 8ball a question!")
-    .addStringOption(option =>
-      option.setName("question")
-            .setDescription("Your question to the 8ball")
-            .setRequired(true)
-    )
+  new SlashCommandBuilder().setName("meme").setDescription("Random meme 😂").toJSON(),
+  new SlashCommandBuilder().setName("hockeymemes").setDescription("Random hockey meme 🏒").toJSON(),
+  new SlashCommandBuilder().setName("hockeygoalies").setDescription("Goalie memes/videos 🥅").toJSON(),
+  new SlashCommandBuilder().setName("monke").setDescription("Random monkey 🐒").toJSON(),
+  new SlashCommandBuilder().setName("8ball").setDescription("Ask the magic 8ball!")
+    .addStringOption(opt => opt.setName("question").setDescription("Your question").setRequired(true))
     .toJSON()
 ];
 
 const rest = new REST({ version: "10" }).setToken(token);
 
-// Register commands
 (async () => {
-  try {
-    console.log("Registering slash commands...");
-    await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-      { body: commands }
-    );
-    console.log("Slash commands registered!");
-  } catch (error) {
-    console.error(error);
-  }
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+  console.log("Commands registered");
 })();
 
 // --------------------
-// INTERACTION HANDLER (NO TYPING)
+// SUBREDDITS
+// --------------------
+const memeSubs = ["memes","meme","dankmemes","Random_Memes","Funnymemes","funny","oldmemes"];
+const hockeySubs = ["hockeymemes","NHLMemes","Icehockeymemes","hockeygearmemes"];
+const goalieSubs = ["hockeygoalies"];
+
+// --------------------
+// CACHE
+// --------------------
+let memeCache = [], hockeyCache = [], goalieCache = [];
+
+// --------------------
+// SAFETY FILTER
+// --------------------
+const bannedWords = ["racist","nazi","hitler","slur"];
+
+function isSafe(post){
+  if(post.over_18) return false;
+  const text = (post.title + " " + (post.selftext || "")).toLowerCase();
+  if(bannedWords.some(word => text.includes(word))) return false;
+  if(post.is_video || post.url.match(/\.(jpg|png|gif)$/) || post.url.includes("v.redd.it")) return true;
+  return false;
+}
+
+// --------------------
+// FETCH + CACHE FUNCTIONS
+// --------------------
+async function fetchSubreddit(sub, type="hot") {
+  const res = await axios.get(`https://www.reddit.com/r/${sub}/${type}.json?limit=50`);
+  return res.data.data.children.map(p => p.data);
+}
+
+async function updateCache(subs, cacheArray){
+  let posts = [];
+  for(const sub of subs){
+    try{
+      const fetched = await fetchSubreddit(sub, "hot");
+      posts.push(...fetched);
+    } catch(err){ console.error(`Failed to fetch ${sub}:`, err.message); }
+  }
+  cacheArray.length = 0;
+  cacheArray.push(...posts.filter(isSafe));
+}
+
+// Initial load + interval
+updateCache(memeSubs, memeCache);
+updateCache(hockeySubs, hockeyCache);
+updateCache(goalieSubs, goalieCache);
+setInterval(()=>updateCache(memeSubs, memeCache), 10*60*1000);
+setInterval(()=>updateCache(hockeySubs, hockeyCache), 10*60*1000);
+setInterval(()=>updateCache(goalieSubs, goalieCache), 10*60*1000);
+
+// --------------------
+// INTERACTION HANDLER
 // --------------------
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+  if(!interaction.isChatInputCommand() && !interaction.isButton()) return;
 
-  try {
-    // ===== MEME COMMAND =====
-    if (interaction.commandName === "meme") {
-      const res = await axios.get("https://www.reddit.com/r/memes/top.json?limit=50&t=week");
-      const posts = res.data.data.children;
+  try{
+    // ===== BUTTONS HANDLER =====
+    if(interaction.isButton()){
+      const [type] = interaction.customId.split("_");
+      let cache;
+      if(type==="meme") cache=memeCache;
+      if(type==="hockey") cache=hockeyCache;
+      if(type==="goalie") cache=goalieCache;
 
-      const images = posts.filter(p => 
-        !p.data.over_18 &&
-        (p.data.url.endsWith(".jpg") || p.data.url.endsWith(".png") || p.data.url.endsWith(".gif"))
-      );
+      if(!cache || !cache.length) return interaction.update({ content:"No content yet!", embeds:[], components:[] });
 
-      if (!images.length) throw new Error("No memes found.");
+      const post = cache[Math.floor(Math.random()*cache.length)];
 
-      const meme = images[Math.floor(Math.random() * images.length)].data;
-
-      const embed = new EmbedBuilder()
-        .setTitle(meme.title)
-        .setURL(`https://reddit.com${meme.permalink}`)
-        .setImage(meme.url)
-        .setColor(0xff0000)
-        .setFooter({ text: `👍 ${meme.ups} | 💬 ${meme.num_comments}` });
-
-      await interaction.reply({ embeds: [embed] }); // reply once, no typing animation
+      if(post.is_video && post.media?.reddit_video?.fallback_url){
+        return interaction.update({ content:`${post.title}\n${post.media.reddit_video.fallback_url}`, embeds:[], components:[interaction.message.components[0]] });
+      } else {
+        const embed = new EmbedBuilder()
+          .setTitle(post.title)
+          .setURL(`https://reddit.com${post.permalink}`)
+          .setImage(post.url)
+          .setColor(type==="meme"?0xff0000:type==="hockey"?0x0099ff:0x00bfff);
+        return interaction.update({ content:null, embeds:[embed], components:[interaction.message.components[0]] });
+      }
     }
 
-    // ===== MONKE COMMAND =====
-    if (interaction.commandName === "monke") {
-      const monkeys = [
-        "https://i.redd.it/thinking-monkey-720p-upscale-of-480p-original-with-v0-wsdgkqzj6rlf1.png?width=1080&format=png&auto=webp&s=4b7a7613f46ebcb8b177859a696532c806ec3221",
-        "https://i.pinimg.com/avif/1200x/5c/81/6b/5c816b2bbab0f824686a6c446e2eaa72.avf",
-        "https://i.pinimg.com/736x/1a/6f/f2/1a6ff2c75346f6670872231ac8c8c728.jpg",
-        "https://i.pinimg.com/736x/c0/d1/b5/c0d1b5920d474e1a702ca680039bb07e.jpg",
-        "https://i.pinimg.com/1200x/4d/70/f4/4d70f4962981b8b6f06f1874da87209a.jpg",
-        "https://i.pinimg.com/736x/f0/cb/00/f0cb0024df9a8fa950aac66295b10cb0.jpg",
-        "https://i.pinimg.com/avif/736x/c0/b1/d4/c0b1d40fb378ca551208bd50a2c412b8.avf",
-        "https://i.pinimg.com/avif/736x/df/d1/e6/dfd1e6e4dde79cc02a1b52a3dfbc364c.avf",
-        "https://i.pinimg.com/736x/c0/d1/b5/c0d1b5920d474e1a702ca680039bb07e.jpg",
-        "https://i.pinimg.com/avif/1200x/6c/6b/a2/6c6ba2de9dff4774872916fefa407c8d.avf"
+    // ===== TYPING ANIMATION =====
+    await interaction.channel.sendTyping();
+    await new Promise(r=>setTimeout(r,1000));
+
+    const nextButton = (id)=> new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`${id}_next`).setLabel("Next").setStyle(ButtonStyle.Primary)
+    );
+
+    // ===== COMMANDS =====
+    if(interaction.commandName==="meme"){
+      if(!memeCache.length) return interaction.reply("No memes ready 😢");
+      const post = memeCache[Math.floor(Math.random()*memeCache.length)];
+      const embed = new EmbedBuilder().setTitle(post.title).setURL(`https://reddit.com${post.permalink}`).setImage(post.url).setColor(0xff0000);
+      return interaction.reply({ embeds:[embed], components:[nextButton("meme")] });
+    }
+
+    if(interaction.commandName==="hockeymemes"){
+      if(!hockeyCache.length) return interaction.reply("No hockey memes 🏒");
+      const post = hockeyCache[Math.floor(Math.random()*hockeyCache.length)];
+      const embed = new EmbedBuilder().setTitle(post.title).setURL(`https://reddit.com${post.permalink}`).setImage(post.url).setColor(0x0099ff);
+      return interaction.reply({ embeds:[embed], components:[nextButton("hockey")] });
+    }
+
+    if(interaction.commandName==="hockeygoalies"){
+      if(!goalieCache.length) return interaction.reply("No goalie content 🥅");
+      const post = goalieCache[Math.floor(Math.random()*goalieCache.length)];
+      if(post.is_video && post.media?.reddit_video?.fallback_url){
+        return interaction.reply({ content:`${post.title}\n${post.media.reddit_video.fallback_url}`, components:[nextButton("goalie")] });
+      } else {
+        const embed = new EmbedBuilder().setTitle(post.title).setURL(`https://reddit.com${post.permalink}`).setImage(post.url).setColor(0x00bfff);
+        return interaction.reply({ embeds:[embed], components:[nextButton("goalie")] });
+      }
+    }
+
+    if(interaction.commandName==="monke"){
+      const monkeys=[
+        "https://i.redd.it/thinking-monkey-720p-upscale.png",
+        "https://i.pinimg.com/736x/1a/6f/f2/1a6ff2c75346f6670872231ac8c8c728.jpg"
       ];
-
-      const imageUrl = monkeys[Math.floor(Math.random() * monkeys.length)];
-
-      const embed = new EmbedBuilder()
-        .setTitle("🐒 Random Monkey!")
-        .setImage(imageUrl)
-        .setColor(0x00ff00);
-
-      await interaction.reply({ embeds: [embed] });
+      const embed = new EmbedBuilder().setTitle("🐒 Random Monkey!").setImage(monkeys[Math.floor(Math.random()*monkeys.length)]).setColor(0x00ff00);
+      return interaction.reply({ embeds:[embed] });
     }
 
-    // ===== 8BALL COMMAND =====
-    if (interaction.commandName === "8ball") {
-      const question = interaction.options.getString("question");
-
-      const answers = [
-        "🎱 Yes, definitely!",
-        "🎱 It is certain.",
-        "🎱 Most likely.",
-        "🎱 Ask again later.",
-        "🎱 Cannot predict now.",
-        "🎱 Don't count on it.",
-        "🎱 Very doubtful.",
-        "🎱 My sources say no.",
-        "🎱 Outlook not so good.",
-        "🎱 Signs point to yes."
-      ];
-
-      const response = answers[Math.floor(Math.random() * answers.length)];
-
-      await interaction.reply({
-        content: `**Question:** ${question}\n**8Ball says:** ${response}`
-      });
+    if(interaction.commandName==="8ball"){
+      const q = interaction.options.getString("question");
+      const answers = ["Yes","No","Maybe","Ask again later","Definitely","Very doubtful"];
+      return interaction.reply({ content:`**Q:** ${q}\n🎱 ${answers[Math.floor(Math.random()*answers.length)]}` });
     }
 
-  } catch (error) {
-    console.error(error);
-    if (interaction.replied) {
-      await interaction.editReply({
-        content: `❌ Something went wrong: ${error.message}`
-      });
-    } else {
-      await interaction.reply({
-        content: `❌ Something went wrong: ${error.message}`,
-        ephemeral: true
-      });
-    }
+  } catch(err){
+    console.error(err);
+    if(!interaction.replied) await interaction.reply({ content:"Error ❌", ephemeral:true });
   }
 });
 
 // --------------------
-// WISPBYTE STATUS MIRROR
+// READY
 // --------------------
-setInterval(async () => {
-  if (!client.user) return;
-
-  try {
-    await axios.get(WISPB_URL, { timeout: 5000 });
-    client.user.setStatus("online");
-  } catch {
-    client.user.setStatus("invisible"); // bot appears offline if Wispbyte is down
-  }
-}, 30000);
-
-// Initial status check
-client.once("ready", () => {
-  console.log(`Logged in as ${client.user.tag}`);
-  axios.get(WISPB_URL, { timeout: 5000 })
-    .then(() => client.user.setStatus("online"))
-    .catch(() => client.user.setStatus("invisible"));
-});
-
-// LOGIN
+client.once("ready", ()=>{ console.log(`Logged in as ${client.user.tag}`); });
 client.login(token);
