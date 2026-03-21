@@ -17,37 +17,23 @@ const token = config.DISCORD_TOKEN;
 const CLIENT_ID = "1441541093156982975";
 const GUILD_ID = "1385650154832662688";
 
+if (!token) {
+  console.error("❌ Missing token");
+  process.exit(1);
+}
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
 // --------------------
-// SUBREDDITS
+// SAFE FALLBACK IMAGES
 // --------------------
-const memeSubs = ["memes","meme","dankmemes","Random_Memes","Funnymemes","funny","oldmemes"];
-const hockeySubs = ["hockeymemes","NHLMemes","Icehockeymemes","hockeygearmemes"];
-const goalieSubs = ["hockeygoalies"];
-const monkeySubs = ["FreeTheMonkeys","punchthemonkey","ape","MonkeyMemes"];
-
-// --------------------
-// MONKEY IMAGES
-// --------------------
-const monkeyImages = [
-  "https://i.pinimg.com/736x/f0/cb/00/f0cb0024df9a8fa950aac66295b10cb0.jpg",
-  "https://i.pinimg.com/1200x/4d/70/f4/4d70f4962981b8b6f06f1874da87209a.jpg",
-  "https://i.pinimg.com/1200x/f8/e1/5b/f8e15bcd1a3aba568c14a1afd24810c0.jpg"
+const fallbackImages = [
+  "https://i.imgur.com/1Jm8Q5y.jpeg",
+  "https://i.imgur.com/9bK0FZl.jpeg",
+  "https://i.imgur.com/8Km9tLL.jpeg"
 ];
-
-// --------------------
-// GOOFY IMAGES
-// --------------------
-const goofyMediaURLs = [
-  "https://media1.tenor.com/m/EwY2ORle_XAAAAAd/wizard-dance.gif",
-  "https://i.pinimg.com/736x/3f/40/e4/3f40e450e87936b1a2830ee1c96ae70a.jpg",
-  "https://i.pinimg.com/736x/9f/5d/05/9f5d053772f615da602544e096892f86.jpg",
-  "https://i.pinimg.com/736x/19/5a/ed/195aed7b818f826da768722628da005b.jpg"
-];
-let goofyCache = goofyMediaURLs.map(url => ({ title: "🖼 Goofy Media", url }));
 
 // --------------------
 // MEMIFY IMAGES
@@ -61,81 +47,101 @@ const memifyImages = [
 ];
 
 // --------------------
-// BLACKLIST
+// SUBREDDITS
 // --------------------
-const blacklist = ["nigger","faggot","bitch","cunt","slut","fuck"];
-function containsBlacklisted(text) {
-  if (!text) return false;
-  text = text.toLowerCase();
-  return blacklist.some(word => text.includes(word));
+const memeSubs = ["memes","dankmemes","funny"];
+const hockeySubs = ["hockeymemes","NHLMemes"];
+const goalieSubs = ["hockeygoalies"];
+const monkeySubs = ["MonkeyMemes","ape"];
+
+// --------------------
+// FETCH REDDIT SAFELY
+// --------------------
+async function fetchSub(sub) {
+  try {
+    const res = await axios.get(`https://www.reddit.com/r/${sub}/hot.json?limit=50`, {
+      headers: { "User-Agent": "discord-bot" }
+    });
+
+    return res.data.data.children
+      .map(p => p.data)
+      .filter(p =>
+        !p.over_18 &&
+        (
+          p.url?.match(/\.(jpg|jpeg|png|gif)$/i) ||
+          p.preview?.images?.[0]?.source?.url
+        )
+      );
+
+  } catch (err) {
+    console.error(`Reddit error (${sub}):`, err.message);
+    return [];
+  }
 }
 
 // --------------------
-// FETCH + CACHE
+// CACHE
 // --------------------
 let memeCache = [];
 let hockeyCache = [];
 let goalieCache = [];
 let monkeyCache = [];
 
-async function fetchSub(sub) {
-  try {
-    const res = await axios.get(`https://www.reddit.com/r/${sub}/hot.json?limit=50`);
-    return res.data.data.children.map(p => p.data);
-  } catch {
-    return [];
-  }
-}
-
-async function buildCache(subs) {
-  let posts = [];
-  for (const sub of subs) posts.push(...(await fetchSub(sub)));
-  return posts.filter(p => !p.over_18 && !containsBlacklisted(p.title));
-}
-
 async function refreshCaches() {
-  memeCache = await buildCache(memeSubs);
-  hockeyCache = await buildCache(hockeySubs);
-  goalieCache = await buildCache(goalieSubs);
-  monkeyCache = await buildCache(monkeySubs);
+  console.log("🔄 Refreshing caches...");
+  memeCache = (await Promise.all(memeSubs.map(fetchSub))).flat();
+  hockeyCache = (await Promise.all(hockeySubs.map(fetchSub))).flat();
+  goalieCache = (await Promise.all(goalieSubs.map(fetchSub))).flat();
+  monkeyCache = (await Promise.all(monkeySubs.map(fetchSub))).flat();
+  console.log("✅ Cache ready");
 }
+
 refreshCaches();
-setInterval(refreshCaches, 10*60*1000);
+setInterval(refreshCaches, 10 * 60 * 1000);
+
+// --------------------
+// BUILD POST SAFELY
+// --------------------
+function buildPost(post) {
+  const image =
+    post?.url ||
+    post?.preview?.images?.[0]?.source?.url?.replace(/&amp;/g, "&") ||
+    fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setTitle(post?.title || "Random Image")
+        .setImage(image)
+        .setColor(0x00bfff)
+    ]
+  };
+}
 
 // --------------------
 // HANGMAN
 // --------------------
 const hangmanWords = [
-  "discord","hockey","banana","javascript","monkey",
-  "internet","goalie","galaxy","rocket","pancake"
-].filter(w => !w.includes("z"));
+  "discord","hockey","banana","javascript",
+  "monkey","internet","goalie","galaxy","rocket","pancake"
+];
 
 const hangmanGames = new Map();
-
-const hangmanStages = [
-  "```\n\n\n\n\n=========\n```",
-  "```\n |\n |\n |\n |\n=========\n```",
-  "```\n +---+\n |\n |\n |\n |\n=========\n```",
-  "```\n +---+\n |   O\n |\n |\n |\n=========\n```",
-  "```\n +---+\n |   O\n |   |\n |\n |\n=========\n```",
-  "```\n +---+\n |   O\n |  /|\\\n |\n |\n=========\n```",
-  "```\n +---+\n |   O\n |  /|\\\n |  / \\\n |\n=========\n```"
-];
 
 const WIN_GIF = "https://media1.tenor.com/m/EwY2ORle_XAAAAAd/wizard-dance.gif";
 const LOSE_GIF = "https://media1.tenor.com/m/-vrZWF9Ly18AAAAd/wet-eggplant.gif";
 
 function getDisplayWord(word, guessed) {
-  return word.split("").map(l => (guessed.includes(l) ? l : "_")).join(" ");
+  return word.split("").map(l => guessed.includes(l) ? l : "_").join(" ");
 }
 
-function createKeyboard(disabled = []) {
+function keyboard(disabled = []) {
   const rows = [];
   const letters = "abcdefghijklmnopqrstuvwxy".split("");
 
   for (let i = 0; i < 5; i++) {
     const row = new ActionRowBuilder();
-    letters.slice(i*5, i*5+5).forEach(l => {
+    letters.slice(i * 5, i * 5 + 5).forEach(l => {
       row.addComponents(
         new ButtonBuilder()
           .setCustomId(`hang_${l}`)
@@ -146,161 +152,157 @@ function createKeyboard(disabled = []) {
     });
     rows.push(row);
   }
+
   return rows;
-}
-
-// --------------------
-// BUILD POST
-// --------------------
-function buildPost(post) {
-  if (!post) return { content: "No content available" };
-
-  if (post.url && /\.(jpg|jpeg|png|gif)$/i.test(post.url)) {
-    return {
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(post.title || "Image")
-          .setImage(post.url)
-          .setColor(0x00bfff)
-      ]
-    };
-  }
-
-  return { content: `${post.title || "Post"}\n${post.url || ""}` };
 }
 
 // --------------------
 // COMMANDS
 // --------------------
 const commands = [
-  new SlashCommandBuilder().setName("meme").setDescription("Trending memes"),
-  new SlashCommandBuilder().setName("hockeymemes").setDescription("Hockey memes"),
-  new SlashCommandBuilder().setName("hockeygoalies").setDescription("Goalie memes"),
-  new SlashCommandBuilder().setName("monke").setDescription("Random monke"),
-  new SlashCommandBuilder().setName("goofyimages").setDescription("Goofy media"),
+  new SlashCommandBuilder().setName("meme").setDescription("Get memes"),
+  new SlashCommandBuilder().setName("hockeymemes").setDescription("Get hockey memes"),
+  new SlashCommandBuilder().setName("hockeygoalies").setDescription("Get goalie memes"),
+  new SlashCommandBuilder().setName("monke").setDescription("Random monkey images"),
+  new SlashCommandBuilder().setName("goofyimages").setDescription("Goofy images"),
+  new SlashCommandBuilder().setName("space").setDescription("Space images"),
   new SlashCommandBuilder()
     .setName("memify")
     .setDescription("Make a meme")
-    .addStringOption(o=>o.setName("text").setRequired(true).setDescription("Text")),
-  new SlashCommandBuilder().setName("space").setDescription("Space image"),
+    .addStringOption(o =>
+      o.setName("text")
+       .setDescription("Text for your meme")
+       .setRequired(true)
+    ),
   new SlashCommandBuilder().setName("hangman").setDescription("Play hangman")
-].map(c=>c.toJSON());
+].map(c => c.toJSON());
 
-const rest = new REST({version:"10"}).setToken(token);
-(async()=>{
-  await rest.put(Routes.applicationGuildCommands(CLIENT_ID,GUILD_ID),{body:commands});
+const rest = new REST({ version: "10" }).setToken(token);
+
+(async () => {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log("✅ Commands registered");
+  } catch (err) {
+    console.error(err);
+  }
 })();
 
 // --------------------
 // RANDOM
 // --------------------
-const rand = arr => arr[Math.floor(Math.random()*arr.length)];
+const rand = arr => arr[Math.floor(Math.random() * arr.length)];
 
 // --------------------
 // INTERACTIONS
 // --------------------
-client.on("interactionCreate", async interaction=>{
-  try{
-    if(interaction.isChatInputCommand()){
+client.on("interactionCreate", async interaction => {
+  try {
+    if (interaction.isChatInputCommand()) {
 
-      if(interaction.commandName==="memify"){
-        const text = interaction.options.getString("text") || "No text";
-        const image = rand(memifyImages);
+      // MEMIFY
+      if (interaction.commandName === "memify") {
+        const text = interaction.options.getString("text");
 
         return interaction.reply({
-          embeds:[
+          embeds: [
             new EmbedBuilder()
               .setTitle("😂 Meme")
               .setDescription(text.toUpperCase())
-              .setImage(image)
+              .setImage(rand(memifyImages))
               .setColor(0xff9900)
           ]
         });
       }
 
-      if(interaction.commandName==="space"){
+      // SPACE
+      if (interaction.commandName === "space") {
         const posts = await fetchSub("spaceporn");
         return interaction.reply(buildPost(rand(posts)));
       }
 
-      if(interaction.commandName==="hangman"){
+      // HANGMAN
+      if (interaction.commandName === "hangman") {
         const word = rand(hangmanWords);
-        hangmanGames.set(interaction.user.id,{word,guessed:[],tries:6});
+        hangmanGames.set(interaction.user.id, { word, guessed: [], tries: 6 });
 
         return interaction.reply({
-          embeds:[new EmbedBuilder()
-            .setTitle("🎮 Hangman")
-            .setDescription(`Word: ${getDisplayWord(word,[])}\n\nTries: 6`)
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("🎮 Hangman")
+              .setDescription(`Word: ${getDisplayWord(word, [])}\nTries: 6`)
           ],
-          components:createKeyboard()
+          components: keyboard()
         });
       }
 
+      // NORMAL COMMANDS
       let cache = [];
-      if(interaction.commandName==="meme") cache=memeCache;
-      if(interaction.commandName==="hockeymemes") cache=hockeyCache;
-      if(interaction.commandName==="hockeygoalies") cache=goalieCache;
-      if(interaction.commandName==="monke") cache=[...monkeyCache,...monkeyImages.map(u=>({url:u}))];
-      if(interaction.commandName==="goofyimages") cache=goofyCache;
+
+      if (interaction.commandName === "meme") cache = memeCache;
+      if (interaction.commandName === "hockeymemes") cache = hockeyCache;
+      if (interaction.commandName === "hockeygoalies") cache = goalieCache;
+      if (interaction.commandName === "monke") cache = monkeyCache;
+      if (interaction.commandName === "goofyimages") cache = memifyImages.map(u => ({ url: u }));
 
       return interaction.reply(buildPost(rand(cache)));
     }
 
-    if(interaction.isButton() && interaction.customId.startsWith("hang_")){
+    // BUTTONS (HANGMAN)
+    if (interaction.isButton()) {
       const letter = interaction.customId.split("_")[1];
       const game = hangmanGames.get(interaction.user.id);
-      if(!game) return;
+      if (!game) return;
 
-      if(!game.guessed.includes(letter)){
+      if (!game.guessed.includes(letter)) {
         game.guessed.push(letter);
-        if(!game.word.includes(letter)) game.tries--;
+        if (!game.word.includes(letter)) game.tries--;
       }
 
-      const display = getDisplayWord(game.word,game.guessed);
-      const stage = hangmanStages[6-game.tries];
+      const display = getDisplayWord(game.word, game.guessed);
 
-      if(!display.includes("_")){
+      if (!display.includes("_")) {
         hangmanGames.delete(interaction.user.id);
         return interaction.update({
           content: WIN_GIF,
-          embeds:[new EmbedBuilder()
-            .setTitle("🎉 YOU WON!")
-            .setDescription(`Word: **${game.word}**\n\n${stage}`)
-          ],
-          components:[]
+          embeds: [new EmbedBuilder().setTitle("🎉 YOU WON!")],
+          components: []
         });
       }
 
-      if(game.tries<=0){
+      if (game.tries <= 0) {
         hangmanGames.delete(interaction.user.id);
         return interaction.update({
           content: LOSE_GIF,
-          embeds:[new EmbedBuilder()
-            .setTitle("💀 YOU LOST!")
-            .setDescription(`Word: **${game.word}**\n\n${hangmanStages[6]}`)
-          ],
-          components:[]
+          embeds: [new EmbedBuilder().setTitle("💀 YOU LOST!").setDescription(`Word: ${game.word}`)],
+          components: []
         });
       }
 
       return interaction.update({
-        embeds:[new EmbedBuilder()
-          .setTitle("🎮 Hangman")
-          .setDescription(`Word: ${display}\n\nTries: ${game.tries}\n\n${stage}`)
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("🎮 Hangman")
+            .setDescription(`Word: ${display}\nTries: ${game.tries}`)
         ],
-        components:createKeyboard(game.guessed)
+        components: keyboard(game.guessed)
       });
     }
 
-  }catch(err){
+  } catch (err) {
     console.error(err);
-    if(interaction.replied || interaction.deferred){
-      interaction.editReply({content:"❌ Error"});
-    } else {
-      interaction.reply({content:"❌ Error",ephemeral:true});
+    if (!interaction.replied) {
+      interaction.reply({ content: "❌ Error", ephemeral: true });
     }
   }
 });
 
-client.once("ready",()=>console.log(`Logged in as ${client.user.tag}`));
+// --------------------
+client.once("ready", () => {
+  console.log(`Logged in as ${client.user.tag}`);
+});
+
 client.login(token);
