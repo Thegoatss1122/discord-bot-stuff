@@ -9,7 +9,6 @@ const {
 const axios = require("axios");
 const token = require("./token.js");
 
-// Replace these with your own IDs
 const CLIENT_ID = "1441541093156982975";
 const GUILD_ID = "1385650154832662688";
 
@@ -21,9 +20,10 @@ const client = new Client({
   ]
 });
 
-// --------------------
-// PREFIX COMMANDS
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Prefix Commands
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const prefix = "!";
 
 client.on('messageCreate', msg => {
@@ -38,9 +38,10 @@ client.on('messageCreate', msg => {
   }
 });
 
-// --------------------
-// SLASH COMMAND: /meme
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Slash Command: /meme
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const commands = [
   new SlashCommandBuilder()
     .setName("meme")
@@ -68,11 +69,9 @@ client.on("interactionCreate", async interaction => {
 
   if (interaction.commandName === "meme") {
     try {
-      // Fetch top posts from r/memes for the past week
       const res = await axios.get("https://www.reddit.com/r/memes/top.json?limit=50&t=week");
       const posts = res.data.data.children;
 
-      // Filter only safe image posts
       const images = posts.filter(p => 
         !p.data.over_18 && 
         (p.data.url.endsWith(".jpg") || p.data.url.endsWith(".png") || p.data.url.endsWith(".gif"))
@@ -80,10 +79,8 @@ client.on("interactionCreate", async interaction => {
 
       if (!images.length) throw new Error("No safe image posts found.");
 
-      // Pick a random meme
       const meme = images[Math.floor(Math.random() * images.length)].data;
 
-      // Create embed
       const embed = new EmbedBuilder()
         .setTitle(meme.title)
         .setURL(`https://reddit.com${meme.permalink}`)
@@ -95,7 +92,6 @@ client.on("interactionCreate", async interaction => {
 
     } catch (error) {
       console.error(error);
-      // Send ephemeral message to user with error details
       await interaction.followUp({ 
         content: `❌ An error occurred: ${error.message}`, 
         ephemeral: true 
@@ -104,12 +100,11 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-// --------------------
-// READY
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Ready Event
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// LOGIN
 client.login(token);
