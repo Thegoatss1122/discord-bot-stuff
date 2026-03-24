@@ -26,18 +26,20 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// --------------------
-// SAFE FALLBACK IMAGES
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Fallback Images
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const fallbackImages = [
   "https://i.imgur.com/1Jm8Q5y.jpeg",
   "https://i.imgur.com/9bK0FZl.jpeg",
   "https://i.imgur.com/8Km9tLL.jpeg"
 ];
 
-// --------------------
-// MEMIFY IMAGES
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Memify Images
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const memifyImages = [
   "https://i.pinimg.com/736x/71/54/0d/71540d33c1dc92647f434879a1c7db52.jpg",
   "https://i.pinimg.com/736x/c4/f0/8f/c4f08fe25118e1b4f6fb53543e39f4db.jpg",
@@ -46,17 +48,19 @@ const memifyImages = [
   "https://i.pinimg.com/736x/56/d6/e4/56d6e47b6278b32ecfb9278b9fc79b7d.jpg"
 ];
 
-// --------------------
-// SUBREDDITS
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Subreddits
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const memeSubs = ["memes","dankmemes","funny"];
 const hockeySubs = ["hockeymemes","NHLMemes"];
 const goalieSubs = ["hockeygoalies"];
 const monkeySubs = ["MonkeyMemes","ape"];
 
-// --------------------
-// FETCH REDDIT SAFELY
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Fetch Reddit
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 async function fetchSub(sub) {
   try {
     const res = await axios.get(`https://www.reddit.com/r/${sub}/hot.json?limit=50`, {
@@ -79,9 +83,10 @@ async function fetchSub(sub) {
   }
 }
 
-// --------------------
-// CACHE
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Cache
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 let memeCache = [];
 let hockeyCache = [];
 let goalieCache = [];
@@ -99,9 +104,10 @@ async function refreshCaches() {
 refreshCaches();
 setInterval(refreshCaches, 10 * 60 * 1000);
 
-// --------------------
-// BUILD POST SAFELY
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Build Post
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 function buildPost(post) {
   const image =
     post?.url ||
@@ -118,9 +124,10 @@ function buildPost(post) {
   };
 }
 
-// --------------------
-// HANGMAN
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Hangman
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const hangmanWords = [
   "discord","hockey","banana","javascript",
   "monkey","internet","goalie","galaxy","rocket","pancake"
@@ -156,9 +163,10 @@ function keyboard(disabled = []) {
   return rows;
 }
 
-// --------------------
-// COMMANDS
-// --------------------
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+// Commands
+// ⸻⸻⸻⸻⸻⸻⸻⸻⸻⸻
+
 const commands = [
   new SlashCommandBuilder().setName("meme").setDescription("Get memes"),
   new SlashCommandBuilder().setName("hockeymemes").setDescription("Get hockey memes"),
@@ -191,19 +199,12 @@ const rest = new REST({ version: "10" }).setToken(token);
   }
 })();
 
-// --------------------
-// RANDOM
-// --------------------
 const rand = arr => arr[Math.floor(Math.random() * arr.length)];
 
-// --------------------
-// INTERACTIONS
-// --------------------
 client.on("interactionCreate", async interaction => {
   try {
     if (interaction.isChatInputCommand()) {
 
-      // MEMIFY
       if (interaction.commandName === "memify") {
         const text = interaction.options.getString("text");
 
@@ -218,13 +219,11 @@ client.on("interactionCreate", async interaction => {
         });
       }
 
-      // SPACE
       if (interaction.commandName === "space") {
         const posts = await fetchSub("spaceporn");
         return interaction.reply(buildPost(rand(posts)));
       }
 
-      // HANGMAN
       if (interaction.commandName === "hangman") {
         const word = rand(hangmanWords);
         hangmanGames.set(interaction.user.id, { word, guessed: [], tries: 6 });
@@ -239,7 +238,6 @@ client.on("interactionCreate", async interaction => {
         });
       }
 
-      // NORMAL COMMANDS
       let cache = [];
 
       if (interaction.commandName === "meme") cache = memeCache;
@@ -251,7 +249,6 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply(buildPost(rand(cache)));
     }
 
-    // BUTTONS (HANGMAN)
     if (interaction.isButton()) {
       const letter = interaction.customId.split("_")[1];
       const game = hangmanGames.get(interaction.user.id);
@@ -300,7 +297,6 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-// --------------------
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
